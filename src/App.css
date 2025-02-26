@@ -1,0 +1,40 @@
+/* General styles */
+body, html, #root, .App {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: #f0f0f0;
+  font-family: Arial, sans-serif;
+}
+
+/* Header styles */
+.header {
+  padding: 1rem;
+  font-size: 48px; /* Larger font size */
+  font-weight: bold;
+  color: #ADD8E6; /* Light blue color */
+}
+
+/* Main content area */
+.content {
+  padding: 1rem;
+}
+
+/* Table styling */
+table {
+  /* Set a width for the table and auto-margins will center it */
+  width: 60%;            
+  margin: 20px auto;     
+  border-collapse: collapse;
+  background-color: #fff;
+}
+
+table, th, td {
+  border: 1px solid #ccc;
+  color: black; /* Text inside the table is black */
+}
+
+th, td {
+  padding: 8px;
+  text-align: left;
+}
