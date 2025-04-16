@@ -10,20 +10,20 @@ const port = 3000;
 
 app.use(cors());
 
-// MySQL pool
+// MySQL pool setup
 const pool = mysql.createPool({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: 'Password123',
-    database: 'medtnr_inventory',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+  host: 'localhost',
+  port: 3306,
+  user: 'root',
+  password: 'Password123',
+  database: 'medtnr_inventory',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 // =========================
-// ⬇️ CSV Import Logic
+// ⬇️ CSV Processing Helpers
 // =========================
 
 const dosageRegex = /(\d+\s?(mg|g|ml|mcg|IU)\b)|(tablet|capsule|injection)\b/i;
@@ -52,7 +52,7 @@ async function processRow(row) {
 
   try {
     const [results] = await pool.query(
-      `SELECT COUNT(*) AS count FROM medication WHERE brandName = ? AND dosage = ?`,
+      `SELECT COUNT(*) AS count FROM medication WHERE TRIM(UPPER(brandName)) = ? AND dosage = ?`,
       [brandName, dosage]
     );
 
@@ -73,22 +73,30 @@ async function processRow(row) {
   }
 }
 
-async function processCSV() {
-  const rows = [];
+let processedLines = new Set();
 
-  await new Promise((resolve, reject) => {
-    fs.createReadStream('ocr_results.csv')
-      .pipe(csv())
-      .on('data', (row) => rows.push(row))
-      .on('end', resolve)
-      .on('error', reject);
+async function watchCSV() {
+  console.log('👀 Watching ocr_results.csv for updates...');
+
+  fs.watchFile('ocr_results.csv', { interval: 1000 }, async () => {
+    const rows = [];
+
+    await new Promise((resolve, reject) => {
+      fs.createReadStream('ocr_results.csv')
+        .pipe(csv())
+        .on('data', (row) => rows.push(row))
+        .on('end', resolve)
+        .on('error', reject);
+    });
+
+    for (const row of rows) {
+      const rowKey = `${row.Text.trim()}|${row.Confidence}`;
+      if (!processedLines.has(rowKey)) {
+        processedLines.add(rowKey);
+        await processRow(row);
+      }
+    }
   });
-
-  for (const row of rows) {
-    await processRow(row);
-  }
-
-  console.log('✅ Finished processing all rows.');
 }
 
 // =========================
@@ -106,15 +114,15 @@ app.get('/medication', async (req, res) => {
 });
 
 // =========================
-// ⬇️ Start Server + Import CSV
+// ⬇️ Start Server + Watch CSV
 // =========================
 
 app.listen(port, async () => {
   console.log(`🚀 Server is running at http://localhost:${port}`);
 
   try {
-    await processCSV(); // Comment this out if you don't want to run every time
+    await watchCSV(); // start continuous file watch
   } catch (err) {
-    console.error('❌ CSV Import Error:', err);
+    console.error('❌ CSV Watch Error:', err);
   }
 });
