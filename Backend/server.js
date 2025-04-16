@@ -30,10 +30,9 @@ const dosageRegex = /(\d+\s?(mg|g|ml|mcg|IU)\b)|(tablet|capsule|injection)\b/i;
 
 function cleanMedicationName(text) {
   return text
-    .replace(/\s+/g, ' ')
-    .replace(/[^a-zA-Z0-9\s]/g, '')
-    .trim()
-    .toUpperCase();
+    .replace(/\s+/g, ' ')              // collapse multiple spaces
+    .replace(/[^a-zA-Z0-9\s]/g, '')    // remove punctuation
+    .trim();                           // remove outer whitespace
 }
 
 async function processRow(row) {
@@ -41,18 +40,20 @@ async function processRow(row) {
   if (confidence < 0.85) return;
 
   const raw = row.Text.trim();
-  const normalizedText = cleanMedicationName(raw);
-  const dosageMatch = normalizedText.match(dosageRegex);
+  const cleaned = cleanMedicationName(raw);
+  const dosageMatch = cleaned.match(dosageRegex);
   const dosage = dosageMatch ? dosageMatch[0] : 'N/A';
 
-  let brandName = normalizedText.replace(dosage, '').trim();
-  brandName = cleanMedicationName(brandName);
+  const brandName = cleanMedicationName(cleaned.replace(dosage, '').trim());
 
   if (!brandName || brandName.length < 3) return;
 
   try {
     const [results] = await pool.query(
-      `SELECT COUNT(*) AS count FROM medication WHERE TRIM(UPPER(brandName)) = ? AND dosage = ?`,
+      `SELECT COUNT(*) AS count 
+       FROM medication 
+       WHERE LOWER(TRIM(brandName)) = LOWER(TRIM(?)) 
+       AND LOWER(TRIM(dosage)) = LOWER(TRIM(?))`,
       [brandName, dosage]
     );
 
@@ -73,30 +74,22 @@ async function processRow(row) {
   }
 }
 
-let processedLines = new Set();
+async function processCSV() {
+  const rows = [];
 
-async function watchCSV() {
-  console.log('👀 Watching ocr_results.csv for updates...');
-
-  fs.watchFile('ocr_results.csv', { interval: 1000 }, async () => {
-    const rows = [];
-
-    await new Promise((resolve, reject) => {
-      fs.createReadStream('ocr_results.csv')
-        .pipe(csv())
-        .on('data', (row) => rows.push(row))
-        .on('end', resolve)
-        .on('error', reject);
-    });
-
-    for (const row of rows) {
-      const rowKey = `${row.Text.trim()}|${row.Confidence}`;
-      if (!processedLines.has(rowKey)) {
-        processedLines.add(rowKey);
-        await processRow(row);
-      }
-    }
+  await new Promise((resolve, reject) => {
+    fs.createReadStream('ocr_results.csv')
+      .pipe(csv())
+      .on('data', (row) => rows.push(row))
+      .on('end', resolve)
+      .on('error', reject);
   });
+
+  for (const row of rows) {
+    await processRow(row);
+  }
+
+  console.log('✅ Finished processing all rows.');
 }
 
 // =========================
@@ -114,15 +107,17 @@ app.get('/medication', async (req, res) => {
 });
 
 // =========================
-// ⬇️ Start Server + Watch CSV
+// ⬇️ Start Server
 // =========================
 
-app.listen(port, async () => {
-  console.log(`🚀 Server is running at http://localhost:${port}`);
-
+(async () => {
   try {
-    await watchCSV(); // start continuous file watch
+    await processCSV(); // Runs once at startup
   } catch (err) {
-    console.error('❌ CSV Watch Error:', err);
+    console.error('❌ CSV Import Error:', err);
   }
-});
+
+  app.listen(port, () => {
+    console.log(`🚀 Server is running at http://localhost:${port}`);
+  });
+})();
