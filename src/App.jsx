@@ -8,9 +8,10 @@ function App() {
 
   useEffect(() => {
     setLoading(true);
-    fetch('http://localhost:3000/medication') // Replace with your API endpoint
+    fetch('http://localhost:3000/medication')
       .then((response) => response.json())
       .then((data) => {
+        console.log("Fetched data:", data); // 👈 LOG IT
         setMedicines(data);
         setLoading(false);
       })
@@ -19,18 +20,22 @@ function App() {
         setLoading(false);
       });
   }, []);
+  
+  
 
   const filteredMedicines = medicines.filter(medicine =>
-    medicine.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    medicine.brandName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     medicine.manufacturer?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+    
+  
 
   return (
     <div className="app">
       <header className="header">
         <div className="logo-container">
           <span className="logo-icon">💊</span>
-          <h1 className="logo-text">Medtnr</h1>
+          <h1 className="logo-text">medtnr</h1>
         </div>
         <div className="search-container">
           <input
@@ -61,34 +66,19 @@ function App() {
             <div className="table-container">
               {filteredMedicines.length > 0 ? (
                 <table className="medicines-table">
-                  <thead>
-                    <tr>
-                      <th>Medicine ID</th>
-                      <th>Name</th>
-                      <th>Dosage</th>
-                      <th>Barcode</th>
-                      <th>Manufacturer</th>
-                      <th>Storage Location</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredMedicines.map((medicine, index) => (
-                      <tr key={index} className={index % 2 === 0 ? 'row-even' : 'row-odd'}>
-                        <td><span className="medicine-id">{medicine.medicineID}</span></td>
-                        <td>{medicine.name}</td>
-                        <td>{medicine.dosage}</td>
-                        <td>{medicine.barcode}</td>
-                        <td>{medicine.manufacturer}</td>
-                        <td>
-                          {medicine.storedAt ? (
-                            <div className="storage-badge">{medicine.storedAt}</div>
-                          ) : (
-                            <div className="storage-badge empty">Not specified</div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                 <thead>
+  <tr>
+    <th>Medicine Name</th>
+  </tr>
+</thead>
+<tbody>
+  {filteredMedicines.map((medicine, index) => (
+    <tr key={index}>
+      <td>{medicine.brandName || '—'}</td>
+    </tr>
+  ))}
+</tbody>
+
                 </table>
               ) : (
                 <div className="no-results">

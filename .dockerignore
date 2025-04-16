@@ -1,0 +1,9 @@
+node_modules
+Backend/node_modules
+docker-nodejs/node_modules
+*.log
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.env
