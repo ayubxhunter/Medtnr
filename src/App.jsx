@@ -68,13 +68,15 @@ function App() {
                 <table className="medicines-table">
                  <thead>
   <tr>
-    <th>Medicine Name</th>
+    <th>Medicine</th>
+    <th>Timestamp</th> {/* 👈 New column */}
   </tr>
 </thead>
 <tbody>
   {filteredMedicines.map((medicine, index) => (
     <tr key={index}>
       <td>{medicine.brandName || '—'}</td>
+      <td>{medicine.timestamp ? new Date(medicine.timestamp).toLocaleString() : '—'}</td> {/* 👈 Format nicely */}
     </tr>
   ))}
 </tbody>
