@@ -37,6 +37,7 @@ function cleanMedicationName(text) {
 
 async function processRow(row) {
   const confidence = parseFloat(row.Confidence);
+  const timestamp = row.Timestamp?.trim(); // ✅ Use timestamp from CSV
   if (confidence < 0.85) return;
 
   const raw = row.Text.trim();
@@ -61,11 +62,11 @@ async function processRow(row) {
       const medicineID = uuidv4().slice(0, 8);
       await pool.query(
         `INSERT INTO medication 
-         (medicineID, brandName, dosage, barcode, manufacturer, storedAt) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [medicineID, brandName, dosage, 'N/A', null, null]
+         (medicineID, brandName, dosage, barcode, manufacturer, storedAt, timestamp) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [medicineID, brandName, dosage, 'N/A', null, null, timestamp] // ✅ Insert timestamp from CSV
       );
-      console.log(`✅ Inserted: ${brandName} | ${dosage}`);
+      console.log(`✅ Inserted: ${brandName} | ${dosage} | ${timestamp}`);
     } else {
       console.log(`⚠️ Skipped duplicate: ${brandName} | ${dosage}`);
     }
